@@ -1,4 +1,11 @@
+*.db
+*.DS_Store
+*.egg-info
 *.log
 *.pot
 *.pyc
+*.swp
 local_settings.py
+.project
+.pydevproject
+venv
