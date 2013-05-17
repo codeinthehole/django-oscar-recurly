@@ -190,6 +190,7 @@ class BillingInfo(models.Model):
         return billing_info
 
 class Coupon(models.Model):
+    
     pass
 
 class CouponRedemption(models.Model):
