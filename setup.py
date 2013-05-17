@@ -14,7 +14,7 @@ setup(name='django-oscar-recurly',
       install_requires=['django-oscar>=0.3', 'requests>=0.13.5', 'recurly-client-python>=2.1.9'],
       dependency_links = [
         'https://github.com/recurly/recurly-client-python.git'
-      ]
+      ],
       include_package_data=True,
       # See http://pypi.python.org/pypi?%3Aaction=list_classifiers
       classifiers=['Environment :: Web Environment',
