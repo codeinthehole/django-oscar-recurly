@@ -58,7 +58,7 @@ class Account(models.Model):
         return account
     
     def charge(self, description, unit_amount, quantity, currency, accounting_code=None):
-        return Adjustment.create(self.user, account=self, description, unit_amount, quantity, currency, accounting_code)
+        return Adjustment.create(self.user, self, description, unit_amount, quantity, currency, accounting_code)
     
     def hosted_login_url(self):
         return 'https://{subdomain}.recurly.com/account/{hosted_login_token}'.format(subdomain=settings.RECURLY_SUBDOMAIN, hosted_login_token=self.hosted_login_token)
