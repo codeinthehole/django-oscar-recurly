@@ -13,7 +13,7 @@ setup(name='django-oscar-recurly',
       packages=find_packages(exclude=['sandbox*', 'tests*']),
       install_requires=['django-oscar>=0.3', 'requests>=0.13.5', 'recurly-client-python>=2.1.9'],
       dependency_links = [
-        'https://github.com/recurly/recurly-client-python.git'
+        'https://github.com/recurly/recurly-client-python/tarball/master#egg=recurly-client-python-2.1.9',
       ],
       include_package_data=True,
       # See http://pypi.python.org/pypi?%3Aaction=list_classifiers
