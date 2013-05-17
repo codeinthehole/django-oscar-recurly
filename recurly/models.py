@@ -30,15 +30,17 @@ class Account(models.Model):
     
     @classmethod
     def create(cls, user, email, first_name, last_name, company_name=None, accept_language=None, billing_info=None):
-        recurly_account = recurly.Account(account_code=user.username)
-        recurly_account.username = user.username
-        recurly_account.email = user.email
-        recurly_account.first_name = user.first_name
-        recurly_account.last_name = user.last_name
-        recurly_account.company_name = company_name
-        recurly_account.accept_language = accept_language
-        recurly_account.billing_info = billing_info
-        recurly_account.save()
+        recurly_account = recurly.Account(
+            account_code=user.username,
+            username=user.username,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            company_name=company_name,
+            accept_language=accept_language,
+            billing_info=billing_info
+        )
+        response = recurly_account.save()
         
         account = cls(
             user=user, 
@@ -61,6 +63,9 @@ class Account(models.Model):
     def hosted_login_url(self):
         return 'https://{subdomain}.recurly.com/account/{hosted_login_token}'.format(subdomain=settings.RECURLY_SUBDOMAIN, hosted_login_token=self.hosted_login_token)
     
+    def recurly_account(self):
+        return recurly.Account.get(self.user.username)
+    
 
 class Adjustment(models.Model):
     user = models.ForeignKey(User)
@@ -82,7 +87,7 @@ class Adjustment(models.Model):
     
     @classmethod
     def create(cls, user, account, description, unit_amount, quantity, currency, accounting_code=None):
-        recurly_account = recurly.Account.get(account.account_code)
+        recurly_account = account.recurly_account()
         recurly_adjustment = recurly.Adjustment(
             description=description,
             unit_amount_in_cents=int(unit_amount*100),
@@ -114,7 +119,75 @@ class Adjustment(models.Model):
         return adjustment
 
 class BillingInfo(models.Model):
-    pass
+    user = models.ForeignKey(User)
+    account = models.ForeignKey(Account)
+    first_name = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=50)
+    company = models.CharField(max_length=50, null=True, blank=True)
+    address1 = models.CharField(max_length=100)
+    address2 = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=20)
+    zipcode = models.CharField(max_length=10)
+    country = models.CharField(max_length=2)
+    phone = models.CharField(max_length=15)
+    vat_number = models.CharField(max_length=20)
+    ip_address = models.CharField(max_length=20)
+    ip_address_country = models.CharField(max_length=2)
+    card_type = models.CharField(max_length=10)
+    year = models.IntegerField()
+    month = models.IntegerField()
+    first_six = models.CharField(max_length=6, null=True, blank=True)
+    last_four = models.CharField(max_length=4, null=True, blank=True)
+    paypal_billing_agreement_id = models.CharField(max_length=20, null=True, blank=True)
+    
+    @classmethod
+    def create(cls, account, first_name, last_name, company, address1, address2, city, state, zipcode, country, phone, vat_number, ip_address, ip_address_country, number, verification_value, month, year):
+        recurly_account = account.recurly_account()
+        recurly_billing_info = recurly_account.billing_info
+        recurly_billing_info.first_name = first_name
+        recurly_billing_info.last_name = last_name
+        recurly_billing_info.company = company
+        recurly_billing_info.address1 = address1
+        recurly_billing_info.address2 = address2
+        recurly_billing_info.city = city
+        recurly_billing_info.state = state
+        recurly_billing_info.zip = zipcode
+        recurly_billing_info.country = country
+        recurly_billing_info.phone = phone
+        recurly_billing_info.vat_number = vat_number
+        recurly_billing_info.ip_address = ip_address
+        recurly_billing_info.ip_address_country = ip_address_country
+        recurly_billing_info.number = number
+        recurly_billing_info.verification_value = verification_value
+        recurly_billing_info.month = month
+        recurly_billing_info.year = year
+        response = recurly_billing_info.save()
+        
+        billing_info = cls(
+            user = account.user,
+            account = account,
+            first_name = first_name,
+            last_name = last_name,
+            company = company,
+            address1 = address1,
+            address2 = address2,
+            city = city,
+            state = state,
+            zipcode = zipcode,
+            country = country,
+            phone = phone,
+            vat_number = vat_number,
+            ip_address = ip_address,
+            ip_address_country = ip_address_country,
+            card_type = response.card_type,
+            year = year,
+            month = month,
+            first_six = response.first_six,
+            last_four = response.last_four
+        )
+        billing_info.save()
+        return billing_info
 
 class Coupon(models.Model):
     pass
