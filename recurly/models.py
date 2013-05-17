@@ -58,7 +58,7 @@ class Account(models.Model):
         return account
     
     def charge(self, description, unit_amount, quantity, currency, accounting_code=None):
-        return Adjustment.create(self.user, self, description, unit_amount, quantity, currency, accounting_code) 
+        return Adjustment.create(self.user, self, description, unit_amount, quantity, currency, accounting_code)
     
     def hosted_login_url(self):
         return 'https://{subdomain}.recurly.com/account/{hosted_login_token}'.format(subdomain=settings.RECURLY_SUBDOMAIN, hosted_login_token=self.hosted_login_token)
@@ -190,8 +190,60 @@ class BillingInfo(models.Model):
         return billing_info
 
 class Coupon(models.Model):
+    coupon_code = models.CharField(max_length=50, db_index=True)
+    name = models.CharField(max_length=50)
+    state = models.CharField(max_length=20)
+    hosted_description = models.CharField(max_length=255)
+    invoice_description = models.CharField(max_length=255)
+    discount_type = models.CharField(max_length=15)
+    discount_percent = models.IntegerField(null=True, blank=True)
+    redeem_by_date = models.DateTimeField(null=True, blank=True)
+    single_use = models.BooleanField(default=False)
+    applies_for_months = models.IntegerField(null=True, blank=True)
+    max_redemptions = models.IntegerField(null=True, blank=True)
+    applies_to_all_plans = models.BooleanField(default=True)
+    created_at = models.DateTimeField()
+    plans = models.ManyToManyField('Plan')
     
-    pass
+    @classmethod
+    def create(cls, coupon_code, name, hosted_description, invoice_description, redeem_by_date, single_use, applies_for_months, max_redemptions, applies_to_all_plans, discount_type, discount_percent, discount, plan_codes=[]):
+        recurly_coupon = recurly.Coupon(
+            coupon_code=coupon_code,
+            name=name,
+            hosted_description=hosted_description,
+            invoice_description=invoice_description,
+            redeem_by_date=redeem_by_date,
+            single_use=single_use,
+            applies_for_month=applies_for_months,
+            max_redemptions=max_redemptions,
+            applies_to_all_plans=applies_to_all_plans,
+            discount_type=discount_type,
+            plan_codes=plan_codes
+        )
+        
+        if discount_type == 'percent':
+            recurly_coupon.discount_percent=discount_percent,
+        elif discount_type == 'dollars':
+            recurly_coupon.discount_in_cents=int(discount*100),
+            
+        response = recurly_coupon.save()
+        
+        coupon = cls(
+            coupon_code = coupon_code,
+            name = name,
+            state = response.state,
+            discount_type = discount_type,
+            discount_percent = discount_percent,
+            redeem_by_date = redeem_by_date,
+            single_use = single_use,
+            applies_for_months = applies_for_months,
+            max_redemptions = max_redemptions,
+            applies_to_all_plans = applies_to_all_plans,
+            created_at = response.created_at,
+            plans = Plan.objects.filter(plan_code__in=plan_codes)
+        )
+        coupon.save()
+        return coupon
 
 class CouponRedemption(models.Model):
     pass
