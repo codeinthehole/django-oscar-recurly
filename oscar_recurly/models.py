@@ -40,7 +40,7 @@ class Account(models.Model):
             accept_language=accept_language,
             billing_info=billing_info
         )
-        response = recurly_account.save()
+        recurly_account.save()
         
         account = cls(
             user=user, 
@@ -95,25 +95,25 @@ class Adjustment(models.Model):
             quantity=quantity,
             accounting_code=accounting_code
         )
-        response = recurly_account.charge(recurly_adjustment)
+        recurly_account.charge(recurly_adjustment)
         
         adjustment = cls(
             user=user, 
             account=account, 
-            uuid=response.uuid, 
+            uuid=recurly_adjustment.uuid, 
             description=description, 
             accounting_code=accounting_code, 
-            origin=response.origin, 
+            origin=recurly_adjustment.origin, 
             unit_amount=unit_amount, 
             quantity=quantity, 
-            discount=response.discount_in_cents/100.0,
-            tax=response.tax_in_cents/100.0,
-            total=response.total_in_cents/100.0,
+            discount=recurly_adjustment.discount_in_cents/100.0,
+            tax=recurly_adjustment.tax_in_cents/100.0,
+            total=recurly_adjustment.total_in_cents/100.0,
             currency=currency,
-            taxable=response.taxable,
-            start_date=response.start_date,
-            end_date=response.end_date,
-            created_at=response.created_at
+            taxable=recurly_adjustment.taxable,
+            start_date=recurly_adjustment.start_date,
+            end_date=recurly_adjustment.end_date,
+            created_at=recurly_adjustment.created_at
         )
         adjustment.save()
         return adjustment
@@ -162,7 +162,7 @@ class BillingInfo(models.Model):
         recurly_billing_info.verification_value = verification_value
         recurly_billing_info.month = month
         recurly_billing_info.year = year
-        response = recurly_billing_info.save()
+        recurly_billing_info.save()
         
         billing_info = cls(
             user = account.user,
@@ -180,11 +180,11 @@ class BillingInfo(models.Model):
             vat_number = vat_number,
             ip_address = ip_address,
             ip_address_country = ip_address_country,
-            card_type = response.card_type,
+            card_type = recurly_billing_info.card_type,
             year = year,
             month = month,
-            first_six = response.first_six,
-            last_four = response.last_four
+            first_six = recurly_billing_info.first_six,
+            last_four = recurly_billing_info.last_four
         )
         billing_info.save()
         return billing_info
@@ -222,16 +222,16 @@ class Coupon(models.Model):
         )
         
         if discount_type == 'percent':
-            recurly_coupon.discount_percent=discount_percent,
+            recurly_coupon.discount_percent=discount_percent
         elif discount_type == 'dollars':
-            recurly_coupon.discount_in_cents=int(discount*100),
+            recurly_coupon.discount_in_cents=int(discount*100)
             
-        response = recurly_coupon.save()
+        recurly_coupon.save()
         
         coupon = cls(
             coupon_code = coupon_code,
             name = name,
-            state = response.state,
+            state = recurly_coupon.state,
             discount_type = discount_type,
             discount_percent = discount_percent,
             redeem_by_date = redeem_by_date,
@@ -239,7 +239,7 @@ class Coupon(models.Model):
             applies_for_months = applies_for_months,
             max_redemptions = max_redemptions,
             applies_to_all_plans = applies_to_all_plans,
-            created_at = response.created_at,
+            created_at = recurly_coupon.created_at,
             plans = Plan.objects.filter(plan_code__in=plan_codes)
         )
         coupon.save()

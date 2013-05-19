@@ -9,7 +9,7 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
         # Adding model 'Account'
-        db.create_table('recurly_account', (
+        db.create_table('oscar_recurly_account', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
             ('account_code', self.gf('django.db.models.fields.CharField')(max_length=50)),
@@ -23,13 +23,13 @@ class Migration(SchemaMigration):
             ('hosted_login_token', self.gf('django.db.models.fields.CharField')(max_length=100, null=True, blank=True)),
             ('created_at', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
         ))
-        db.send_create_signal('recurly', ['Account'])
+        db.send_create_signal('oscar_recurly', ['Account'])
 
         # Adding model 'Adjustment'
-        db.create_table('recurly_adjustment', (
+        db.create_table('oscar_recurly_adjustment', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
-            ('account', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['recurly.Account'])),
+            ('account', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['oscar_recurly.Account'])),
             ('uuid', self.gf('django.db.models.fields.CharField')(max_length=32)),
             ('description', self.gf('django.db.models.fields.CharField')(max_length=255)),
             ('accounting_code', self.gf('django.db.models.fields.CharField')(max_length=100, null=True, blank=True)),
@@ -45,13 +45,13 @@ class Migration(SchemaMigration):
             ('end_date', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
             ('created_at', self.gf('django.db.models.fields.DateTimeField')()),
         ))
-        db.send_create_signal('recurly', ['Adjustment'])
+        db.send_create_signal('oscar_recurly', ['Adjustment'])
 
         # Adding model 'BillingInfo'
-        db.create_table('recurly_billinginfo', (
+        db.create_table('oscar_recurly_billinginfo', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['auth.User'])),
-            ('account', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['recurly.Account'])),
+            ('account', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['oscar_recurly.Account'])),
             ('first_name', self.gf('django.db.models.fields.CharField')(max_length=50)),
             ('last_name', self.gf('django.db.models.fields.CharField')(max_length=50)),
             ('company', self.gf('django.db.models.fields.CharField')(max_length=50, null=True, blank=True)),
@@ -72,10 +72,10 @@ class Migration(SchemaMigration):
             ('last_four', self.gf('django.db.models.fields.CharField')(max_length=4, null=True, blank=True)),
             ('paypal_billing_agreement_id', self.gf('django.db.models.fields.CharField')(max_length=20, null=True, blank=True)),
         ))
-        db.send_create_signal('recurly', ['BillingInfo'])
+        db.send_create_signal('oscar_recurly', ['BillingInfo'])
 
         # Adding model 'Coupon'
-        db.create_table('recurly_coupon', (
+        db.create_table('oscar_recurly_coupon', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('coupon_code', self.gf('django.db.models.fields.CharField')(max_length=50, db_index=True)),
             ('name', self.gf('django.db.models.fields.CharField')(max_length=50)),
@@ -91,54 +91,54 @@ class Migration(SchemaMigration):
             ('applies_to_all_plans', self.gf('django.db.models.fields.BooleanField')(default=True)),
             ('created_at', self.gf('django.db.models.fields.DateTimeField')()),
         ))
-        db.send_create_signal('recurly', ['Coupon'])
+        db.send_create_signal('oscar_recurly', ['Coupon'])
 
         # Adding M2M table for field plans on 'Coupon'
-        db.create_table('recurly_coupon_plans', (
+        db.create_table('oscar_recurly_coupon_plans', (
             ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
-            ('coupon', models.ForeignKey(orm['recurly.coupon'], null=False)),
-            ('plan', models.ForeignKey(orm['recurly.plan'], null=False))
+            ('coupon', models.ForeignKey(orm['oscar_recurly.coupon'], null=False)),
+            ('plan', models.ForeignKey(orm['oscar_recurly.plan'], null=False))
         ))
-        db.create_unique('recurly_coupon_plans', ['coupon_id', 'plan_id'])
+        db.create_unique('oscar_recurly_coupon_plans', ['coupon_id', 'plan_id'])
 
         # Adding model 'CouponRedemption'
-        db.create_table('recurly_couponredemption', (
+        db.create_table('oscar_recurly_couponredemption', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
-        db.send_create_signal('recurly', ['CouponRedemption'])
+        db.send_create_signal('oscar_recurly', ['CouponRedemption'])
 
         # Adding model 'Invoice'
-        db.create_table('recurly_invoice', (
+        db.create_table('oscar_recurly_invoice', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
-        db.send_create_signal('recurly', ['Invoice'])
+        db.send_create_signal('oscar_recurly', ['Invoice'])
 
         # Adding model 'Plan'
-        db.create_table('recurly_plan', (
+        db.create_table('oscar_recurly_plan', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
-        db.send_create_signal('recurly', ['Plan'])
+        db.send_create_signal('oscar_recurly', ['Plan'])
 
         # Adding model 'PlanAddOn'
-        db.create_table('recurly_planaddon', (
+        db.create_table('oscar_recurly_planaddon', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
-        db.send_create_signal('recurly', ['PlanAddOn'])
+        db.send_create_signal('oscar_recurly', ['PlanAddOn'])
 
         # Adding model 'Subscription'
-        db.create_table('recurly_subscription', (
+        db.create_table('oscar_recurly_subscription', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
-        db.send_create_signal('recurly', ['Subscription'])
+        db.send_create_signal('oscar_recurly', ['Subscription'])
 
         # Adding model 'Transaction'
-        db.create_table('recurly_transaction', (
+        db.create_table('oscar_recurly_transaction', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
-        db.send_create_signal('recurly', ['Transaction'])
+        db.send_create_signal('oscar_recurly', ['Transaction'])
 
         # Adding model 'OrderTransaction'
-        db.create_table('recurly_ordertransaction', (
+        db.create_table('oscar_recurly_ordertransaction', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('order_number', self.gf('django.db.models.fields.CharField')(max_length=128, null=True, db_index=True)),
             ('txn_type', self.gf('django.db.models.fields.CharField')(max_length=12)),
@@ -150,45 +150,45 @@ class Migration(SchemaMigration):
             ('response_xml', self.gf('django.db.models.fields.TextField')()),
             ('date_created', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
         ))
-        db.send_create_signal('recurly', ['OrderTransaction'])
+        db.send_create_signal('oscar_recurly', ['OrderTransaction'])
 
 
     def backwards(self, orm):
         # Deleting model 'Account'
-        db.delete_table('recurly_account')
+        db.delete_table('oscar_recurly_account')
 
         # Deleting model 'Adjustment'
-        db.delete_table('recurly_adjustment')
+        db.delete_table('oscar_recurly_adjustment')
 
         # Deleting model 'BillingInfo'
-        db.delete_table('recurly_billinginfo')
+        db.delete_table('oscar_recurly_billinginfo')
 
         # Deleting model 'Coupon'
-        db.delete_table('recurly_coupon')
+        db.delete_table('oscar_recurly_coupon')
 
         # Removing M2M table for field plans on 'Coupon'
-        db.delete_table('recurly_coupon_plans')
+        db.delete_table('oscar_recurly_coupon_plans')
 
         # Deleting model 'CouponRedemption'
-        db.delete_table('recurly_couponredemption')
+        db.delete_table('oscar_recurly_couponredemption')
 
         # Deleting model 'Invoice'
-        db.delete_table('recurly_invoice')
+        db.delete_table('oscar_recurly_invoice')
 
         # Deleting model 'Plan'
-        db.delete_table('recurly_plan')
+        db.delete_table('oscar_recurly_plan')
 
         # Deleting model 'PlanAddOn'
-        db.delete_table('recurly_planaddon')
+        db.delete_table('oscar_recurly_planaddon')
 
         # Deleting model 'Subscription'
-        db.delete_table('recurly_subscription')
+        db.delete_table('oscar_recurly_subscription')
 
         # Deleting model 'Transaction'
-        db.delete_table('recurly_transaction')
+        db.delete_table('oscar_recurly_transaction')
 
         # Deleting model 'OrderTransaction'
-        db.delete_table('recurly_ordertransaction')
+        db.delete_table('oscar_recurly_ordertransaction')
 
 
     models = {
@@ -228,7 +228,7 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        'recurly.account': {
+        'oscar_recurly.account': {
             'Meta': {'object_name': 'Account'},
             'accept_language': ('django.db.models.fields.CharField', [], {'max_length': '20', 'null': 'True', 'blank': 'True'}),
             'account_code': ('django.db.models.fields.CharField', [], {'max_length': '50'}),
@@ -243,9 +243,9 @@ class Migration(SchemaMigration):
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),
             'username': ('django.db.models.fields.CharField', [], {'max_length': '50'})
         },
-        'recurly.adjustment': {
+        'oscar_recurly.adjustment': {
             'Meta': {'object_name': 'Adjustment'},
-            'account': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['recurly.Account']"}),
+            'account': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['oscar_recurly.Account']"}),
             'accounting_code': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
             'created_at': ('django.db.models.fields.DateTimeField', [], {}),
             'currency': ('django.db.models.fields.CharField', [], {'max_length': '3'}),
@@ -263,9 +263,9 @@ class Migration(SchemaMigration):
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),
             'uuid': ('django.db.models.fields.CharField', [], {'max_length': '32'})
         },
-        'recurly.billinginfo': {
+        'oscar_recurly.billinginfo': {
             'Meta': {'object_name': 'BillingInfo'},
-            'account': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['recurly.Account']"}),
+            'account': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['oscar_recurly.Account']"}),
             'address1': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'address2': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
             'card_type': ('django.db.models.fields.CharField', [], {'max_length': '10'}),
@@ -288,7 +288,7 @@ class Migration(SchemaMigration):
             'year': ('django.db.models.fields.IntegerField', [], {}),
             'zipcode': ('django.db.models.fields.CharField', [], {'max_length': '10'})
         },
-        'recurly.coupon': {
+        'oscar_recurly.coupon': {
             'Meta': {'object_name': 'Coupon'},
             'applies_for_months': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
             'applies_to_all_plans': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
@@ -301,20 +301,20 @@ class Migration(SchemaMigration):
             'invoice_description': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'max_redemptions': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '50'}),
-            'plans': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['recurly.Plan']", 'symmetrical': 'False'}),
+            'plans': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['oscar_recurly.Plan']", 'symmetrical': 'False'}),
             'redeem_by_date': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'single_use': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'state': ('django.db.models.fields.CharField', [], {'max_length': '20'})
         },
-        'recurly.couponredemption': {
+        'oscar_recurly.couponredemption': {
             'Meta': {'object_name': 'CouponRedemption'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        'recurly.invoice': {
+        'oscar_recurly.invoice': {
             'Meta': {'object_name': 'Invoice'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        'recurly.ordertransaction': {
+        'oscar_recurly.ordertransaction': {
             'Meta': {'ordering': "('-date_created',)", 'object_name': 'OrderTransaction'},
             'amount': ('django.db.models.fields.DecimalField', [], {'null': 'True', 'max_digits': '12', 'decimal_places': '2', 'blank': 'True'}),
             'date_created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
@@ -327,22 +327,22 @@ class Migration(SchemaMigration):
             'txn_ref': ('django.db.models.fields.CharField', [], {'max_length': '16'}),
             'txn_type': ('django.db.models.fields.CharField', [], {'max_length': '12'})
         },
-        'recurly.plan': {
+        'oscar_recurly.plan': {
             'Meta': {'object_name': 'Plan'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        'recurly.planaddon': {
+        'oscar_recurly.planaddon': {
             'Meta': {'object_name': 'PlanAddOn'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        'recurly.subscription': {
+        'oscar_recurly.subscription': {
             'Meta': {'object_name': 'Subscription'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        'recurly.transaction': {
+        'oscar_recurly.transaction': {
             'Meta': {'object_name': 'Transaction'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         }
     }
 
-    complete_apps = ['recurly']
+    complete_apps = ['oscar_recurly']
