@@ -73,7 +73,7 @@ class Adjustment(models.Model):
     account = models.ForeignKey(Account)
     uuid = models.CharField(max_length=32, db_indexed=True)
     description = models.CharField(max_length=255)
-    accounting_code = models.CharField(max_length=100, null=True, blank=True)
+    accounting_code = models.CharField(max_length=20, null=True, blank=True)
     origin = models.CharField(max_length=20)
     unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
     quantity = models.IntegerField()
@@ -363,9 +363,73 @@ class Invoice(models.Model):
             
         return invoice
             
-
+PLAN_UNIT_CHOICES = (('days', 'Days'), ('months', 'Months'))
 class Plan(models.Model):
-    pass
+    plan_code = models.CharField(max_length=50, db_indexed=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
+    success_url = models.URLField(max_length=255, null=True, blank=True)
+    cancel_url = models.URLField(max_length=255, null=True, blank=True)
+    display_donation_amounts = models.BooleanField(default=False)
+    display_quantity = models.BooleanField(default=False)
+    display_phone_number = models.BooleanField(default=False)
+    bypass_hosted_confirmation = models.BooleanField(default=False)
+    unit_name = models.CharField(max_length=20, default='users')
+    payment_page_tos_link = models.URLField(max_length=255, null=True, blank=True)
+    plan_interval_length = models.IntegerField(default=1)
+    plan_interval_unit = models.CharField(max_length=20, choices=PLAN_UNIT_CHOICES, default='months')
+    trial_interval_length = models.IntegerField(default=0)
+    trial_interval_unit = models.CharField(max_length=20, choices=PLAN_UNIT_CHOICES, default='months')
+    accounting_code = models.CharField(max_length=20, null=True, blank=True) 
+    created_at = models.DateTimeField()
+    unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    setup_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    
+    @classmethod
+    def create(cls, plan_code, name, description, accounting_code, plan_interval_unit, plan_interval_length, trial_interval_unit, trial_interval_length, setup_fee, unit_amount, total_billing_cycles, unit_name, display_quantity, success_url, cancel_url):
+        recurly_plan = recurly.Plan(
+            plan_code = plan_code,
+            name = name,
+            description = description,
+            accounting_code = accounting_code,
+            plan_interval_unit = plan_interval_unit,
+            plan_interval_length = plan_interval_length,
+            trial_interval_unit = trial_interval_unit,
+            trial_interval_length = trial_interval_length,
+            setup_fee_in_cents = recurly.resource.Money(int(setup_fee * 100)),
+            unit_amount_in_cents = recurly.resource.Money(int(unit_amount * 100)),
+            total_billing_cycles = total_billing_cycles,
+            unit_name = unit_name,
+            display_quantity = display_quantity,
+            success_url = success_url,
+            cancel_url = cancel_url
+        )
+        recurly_plan.save()
+        
+        plan = cls(
+            plan_code = plan_code,
+            name = name,
+            description = description,
+            accounting_code = accounting_code,
+            plan_interval_unit = plan_interval_unit,
+            plan_interval_length = plan_interval_length,
+            trial_interval_unit = trial_interval_unit,
+            trial_interval_length = trial_interval_length,
+            setup_fee_in_cents = setup_fee,
+            unit_amount_in_cents = unit_amount,
+            total_billing_cycles = total_billing_cycles,
+            unit_name = unit_name,
+            display_quantity = display_quantity,
+            success_url = success_url,
+            cancel_url = cancel_url,
+            display_donation_amounts = recurly_plan.display_donation_amounts,
+            display_phone_number = recurly_plan.display_phone_number,
+            bypass_hosted_confirmation = recurly_plan.bypass_hosted_confirmation,
+            payment_page_tos_link = recurly_plan.payment_page_tos_link,
+            created_at = recurly_plan.payment_page_tos_link
+        )
+        plan.save()
+        return plan
 
 class PlanAddOn(models.Model):
     pass
