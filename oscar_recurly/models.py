@@ -430,12 +430,105 @@ class Plan(models.Model):
         )
         plan.save()
         return plan
+    
+    @property
+    def recurly_plan(self):
+        return recurly.Plan.get(self.plan_code)
 
 class PlanAddOn(models.Model):
-    pass
+    plan = models.ForeignKey(Plan)
+    add_on_code = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
+    display_quantity_on_hosted_page = models.BooleanField(default=True)
+    default_quantity = models.IntegerField(default=1)
+    unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    created_at = models.DateTimeField()
+    
+    @classmethod
+    def create(cls, plan, add_on_code, name, unit_amount, default_quantity, display_quantity_on_hosted_page, accounting_code):
+        recurly_plan = plan.recurly_plan
+        recurly_plan_add_on = recurly.AddOn(
+            add_on_code = add_on_code,
+            name = name,
+            unit_amount_in_cents = recurly.resource.Money(int(unit_amount * 100)),
+            default_quantity = default_quantity,
+            display_quantity_on_hosted_page = display_quantity_on_hosted_page,
+            accounting_code = accounting_code
+        )
+        recurly_plan.create_add_on(recurly_plan_add_on)
+        
+        plan_add_on = cls(
+            plan = plan,
+            add_on_code = add_on_code,
+            name = name,
+            unit_amount = unit_amount,
+            default_quantity = default_quantity,
+            display_quantity_on_hosted_page = display_quantity_on_hosted_page,
+            accounting_code = accounting_code,
+            created_at = recurly_plan_add_on.created_at
+        )
+        plan_add_on.save()
+        return plan_add_on
+        
 
 class Subscription(models.Model):
-    pass
+    account = models.ForeignKey(Account)
+    user = models.ForeignKey(User)
+    plan = models.ForeignKey(Plan)
+    uuid = models.CharField(max_length=32, db_indexed=True)
+    state = models.CharField(max_length=20)
+    unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    quantity = models.IntegerField(default=1)
+    activated_at = models.DateTimeField()
+    canceled_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    current_period_started_at = models.DateTimeField()
+    current_period_ends_at = models.DateTimeField()
+    trial_started_at = models.DateTimeField(null=True, blank=True)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    subscription_add_ons = models.ManyToManyField(PlanAddOn, null=True, blank=True)
+    
+    @classmethod
+    def create(cls, plan, account, subscription_add_ons, coupon_code, unit_amount, currency, quantity, trial_ends_at, starts_at, total_billing_cycles, first_renewal_date):
+        recurly_account = account.recurly_account
+        recurly_subscription = recurly.Subscription(
+            plan_code = plan.plan_code,
+            account = recurly_account,
+            coupon_code = coupon_code,
+            unit_amount_in_cents = recurly.resource.Money(int(unit_amount * 100)),
+            currency = currency,
+            quantity = quantity,
+            trial_ends_at = trial_ends_at,
+            starts_at = starts_at,
+            total_billing_cycles = total_billing_cycles,
+            first_renewal_date = first_renewal_date
+        )
+        
+        if subscription_add_ons:
+            #TODO Add-ons
+            pass
+        recurly_subscription.save()
+        
+        subscription = cls(
+            account = account,
+            user = account.user,
+            plan = plan,
+            uuid = recurly_subscription.uuid,
+            state = recurly_subscription.state,
+            unit_amount = unit_amount,
+            currency = currency,
+            quantity = quantity,
+            activated_at = recurly_subscription.activated_at,
+            canceled_at = recurly_subscription.canceled_at,
+            expires_at = recurly_subscription.expires_at,
+            current_period_started_at = recurly_subscription.current_period_started_at,
+            current_period_ends_at = recurly_subscription.current_period_ends_at,
+            trial_started_at = recurly_subscription.trial_started_at,
+            trial_ends_at = trial_ends_at
+        )
+        subscription.save()
+        return subscription
 
 class Transaction(models.Model):
     pass
