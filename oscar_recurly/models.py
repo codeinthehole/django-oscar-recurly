@@ -71,7 +71,7 @@ class Account(models.Model):
 class Adjustment(models.Model):
     user = models.ForeignKey(User)
     account = models.ForeignKey(Account)
-    uuid = models.CharField(max_length=32)
+    uuid = models.CharField(max_length=32, db_indexed=True)
     description = models.CharField(max_length=255)
     accounting_code = models.CharField(max_length=100, null=True, blank=True)
     origin = models.CharField(max_length=20)
@@ -85,6 +85,7 @@ class Adjustment(models.Model):
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField()
+    invoice = models.ForeignKey('Invoice', null=True, blank=True)
     
     @classmethod
     def create(cls, user, account, description, unit_amount, quantity, currency, accounting_code=None):
@@ -98,6 +99,28 @@ class Adjustment(models.Model):
         )
         recurly_account.charge(recurly_adjustment)
         
+        adjustment = self._create_local(
+            user=user, 
+            account=account, 
+            uuid=recurly_adjustment.uuid, 
+            description=description, 
+            accounting_code=accounting_code, 
+            origin=recurly_adjustment.origin, 
+            unit_amount=unit_amount, 
+            quantity=quantity, 
+            discount=recurly_adjustment.discount_in_cents/100.0,
+            tax=recurly_adjustment.tax_in_cents/100.0,
+            total=recurly_adjustment.total_in_cents/100.0,
+            currency=currency,
+            taxable=recurly_adjustment.taxable,
+            start_date=recurly_adjustment.start_date,
+            end_date=recurly_adjustment.end_date,
+            created_at=recurly_adjustment.created_at
+        )
+        return adjustment
+    
+    @classmethod
+    def _create_local(cls, user, account, description, unit_amount, quantity, currency, accounting_code=None):
         adjustment = cls(
             user=user, 
             account=account, 
@@ -132,7 +155,7 @@ class BillingInfo(models.Model):
     zipcode = models.CharField(max_length=10)
     country = models.CharField(max_length=2)
     phone = models.CharField(max_length=15)
-    vat_number = models.CharField(max_length=20)
+    vat_number = models.CharField(max_length=20, null=True, blank=True)
     ip_address = models.CharField(max_length=20)
     ip_address_country = models.CharField(max_length=2)
     card_type = models.CharField(max_length=10)
@@ -286,7 +309,60 @@ class CouponRedemption(models.Model):
         return coupon_redemption
 
 class Invoice(models.Model):
-    pass
+    account = models.ForeignKey(Account)
+    user = models.ForeignKey(User)
+    uuid = models.CharField(max_length=32, db_indexed=True)
+    state = models.CharField(max_length=20)
+    invoice_number = models.IntegerField()
+    po_number = models.CharField(max_length=20, null=True, blank=True)
+    vat_number = models.CharField(max_length=20, null=True, blank=True)
+    subtotal = models.DecimalField(max_digits=8, decimal_places=2)
+    tax = models.DecimalField(max_digits=8, decimal_places=2)
+    total = models.DecimalField(max_digits=8, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    created_at = models.DateTimeField()
+    
+    @classmethod
+    def create(cls, account):
+        recurly_account = account.recurly_account
+        recurly_invoice = recurly_account.invoice()
+        
+        invoice = cls(
+            account = account,
+            user = account.user,
+            uuid = recurly_invoice.uuid,
+            state = recurly_invoice.state,
+            invoice_number = recurly_invoice.invoice_number,
+            po_number = recurly_invoice.po_number,
+            vat_number = recurly_invoice.vat_number,
+            subtotal = recurly_invoice.subtotal_in_cents / 100.0,
+            tax = recurly_invoice.tax_in_cents / 100.0,
+            total = recurly_invoice.total_in_cents / 100.0,
+            currency = recurly_invoice.currency,
+            created_at = recurly_invoice.created_at
+        )
+        invoice.save()
+         
+        for line_item in recurly_invoice.line_items:
+            try:
+                adjustment = account.adjustment_set.get(uuid=line_item.uuid)
+            except DoesNotExist as dne:
+                adjustment = Adjustment._create_local(account.user, account, line_item.description, line_item.unit_amount, line_item.quantity, line_item.currency, line_item.accounting_code)
+            
+            adjustment.invoice = self
+            adjustment.save()
+        
+        for recurly_transaction in recurly_invoice.transactions:
+            try:
+                transaction = account.transaction_set.get(uuid=recurly_transaction.uuid)
+            except DoesNotExist as dne:
+                pass #TODO: Transaction._create_local
+            
+            transaction.invoice = self
+            transaction.save()
+            
+        return invoice
+            
 
 class Plan(models.Model):
     pass
