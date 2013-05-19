@@ -10,10 +10,6 @@ recurly.PRIVATE_KEY = settings.RECURLY_PRIVATE_KEY
 recurly.DEFAULT_CURRENCY = settings.RECURLY_DEFAULT_CURRENCY
 
 
-def pretty_print_xml(xml_string):
-    line_regex = re.compile(r'\n\n')
-    return line_regex.sub('', parseString(xml_string).toprettyxml())
-
 ACCOUNT_STATE_CHOICES = (('active','Active'),('closed','Closed'))
 class Account(models.Model):
     user = models.ForeignKey(User)
@@ -27,6 +23,9 @@ class Account(models.Model):
     accept_language = models.CharField(max_length=20, null=True, blank=True)
     hosted_login_token = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ('-pk')
     
     @classmethod
     def create(cls, user, email, first_name, last_name, company_name=None, accept_language=None, billing_info=None):
@@ -86,6 +85,9 @@ class Adjustment(models.Model):
     end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField()
     invoice = models.ForeignKey('Invoice', null=True, blank=True)
+    
+    class Meta:
+        ordering = ('-pk')
     
     @classmethod
     def create(cls, user, account, description, unit_amount, quantity, currency, accounting_code=None):
@@ -165,6 +167,9 @@ class BillingInfo(models.Model):
     last_four = models.CharField(max_length=4, null=True, blank=True)
     paypal_billing_agreement_id = models.CharField(max_length=20, null=True, blank=True)
     
+    class Meta:
+        ordering = ('-pk')
+    
     @classmethod
     def create(cls, account, first_name, last_name, company, address1, address2, city, state, zipcode, country, phone, vat_number, ip_address, ip_address_country, number, verification_value, month, year):
         recurly_account = account.recurly_account
@@ -230,6 +235,9 @@ class Coupon(models.Model):
     created_at = models.DateTimeField()
     plans = models.ManyToManyField('Plan')
     
+    class Meta:
+        ordering = ('coupon_code',)
+    
     @classmethod
     def create(cls, coupon_code, name, hosted_description, invoice_description, redeem_by_date, single_use, applies_for_months, max_redemptions, applies_to_all_plans, discount_type, discount_percent, discount_dollars, plan_codes=[]):
         recurly_coupon = recurly.Coupon(
@@ -285,6 +293,9 @@ class CouponRedemption(models.Model):
     state = models.CharField(max_length=20)
     created_at = models.DateTimeField()
     
+    class Meta:
+        ordering = ('-pk')
+    
     @classmethod
     def create(cls, coupon, account, currency):
         recurly_coupon = coupon.recurly_coupon
@@ -321,6 +332,9 @@ class Invoice(models.Model):
     total = models.DecimalField(max_digits=8, decimal_places=2)
     currency = models.CharField(max_length=3)
     created_at = models.DateTimeField()
+    
+    class Meta:
+        ordering = ('-pk')
     
     @classmethod
     def create(cls, account):
@@ -393,6 +407,9 @@ class Plan(models.Model):
     unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
     setup_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     
+    class Meta:
+        ordering = ('plan_code',)
+    
     @classmethod
     def create(cls, plan_code, name, description, accounting_code, plan_interval_unit, plan_interval_length, trial_interval_unit, trial_interval_length, setup_fee, unit_amount, total_billing_cycles, unit_name, display_quantity, success_url, cancel_url):
         recurly_plan = recurly.Plan(
@@ -452,6 +469,9 @@ class PlanAddOn(models.Model):
     unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
     created_at = models.DateTimeField()
     
+    class Meta:
+        ordering = ('plan', 'add_on_code',)
+    
     @classmethod
     def create(cls, plan, add_on_code, name, unit_amount, default_quantity, display_quantity_on_hosted_page, accounting_code):
         recurly_plan = plan.recurly_plan
@@ -496,6 +516,9 @@ class Subscription(models.Model):
     trial_started_at = models.DateTimeField(null=True, blank=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True)
     subscription_add_ons = models.ManyToManyField(PlanAddOn, null=True, blank=True)
+    
+    class Meta:
+        ordering = ('-pk')
     
     @classmethod
     def create(cls, plan, account, subscription_add_ons, coupon_code, unit_amount, currency, quantity, trial_ends_at, starts_at, total_billing_cycles, first_renewal_date):
@@ -594,6 +617,9 @@ class Transaction(models.Model):
     billing_info_first_six = models.CharField(max_length=6)
     billing_info_last_four = models.CharField(max_length=4)
     
+    class Meta:
+        ordering = ('-pk')
+    
     @classmethod
     def create(cls, account, amount, currency, description):
         recurly_account = account.recurly_account
@@ -664,62 +690,3 @@ class Transaction(models.Model):
         )
         transaction.save()
         return transaction
-
-
-class OrderTransaction(models.Model):
-
-    # Note we don't use a foreign key as the order hasn't been created
-    # by the time the transaction takes place
-    order_number = models.CharField(max_length=128, db_index=True, null=True)
-
-    # Transaction type
-    txn_type = models.CharField(max_length=12)
-    txn_ref = models.CharField(max_length=16)
-    amount = models.DecimalField(decimal_places=2,
-                                 max_digits=12,
-                                 blank=True,
-                                 null=True
-                                 )
-
-    response_code = models.CharField(max_length=2)
-    response_message = models.CharField(max_length=255)
-
-    # For debugging purposes
-    request_xml = models.TextField()
-    response_xml = models.TextField()
-
-    date_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ('-date_created',)
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            cc_regex = re.compile(r'\d{12}')
-            self.request_xml = cc_regex.sub('XXXXXXXXXXXX', self.request_xml)
-            ccv_regex = re.compile(r'<Cvc2>\d+</Cvc2>')
-
-            self.request_xml = ccv_regex.sub('<Cvc2>XXX</Cvc2>',
-                                             self.request_xml)
-
-            pw_regex = re.compile(r'<PostPassword>.*</PostPassword>')
-            self.request_xml = pw_regex.sub('<PostPassword>XXX</PostPassword>',
-                                            self.request_xml)
-
-        super(OrderTransaction, self).save(*args, **kwargs)
-
-    def __unicode__(self):
-        return u'%s txn for order %s - ref: %s, message: %s' % (
-            self.txn_type,
-            self.order_number,
-            self.txn_ref,
-            self.response_message,
-        )
-
-    @property
-    def pretty_request_xml(self):
-        return pretty_print_xml(self.request_xml)
-
-    @property
-    def pretty_response_xml(self):
-        return pretty_print_xml(self.response_xml)
