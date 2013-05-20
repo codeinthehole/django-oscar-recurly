@@ -25,7 +25,7 @@ class Account(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, user, email, first_name, last_name, company_name=None, accept_language=None, billing_info=None):
@@ -70,7 +70,7 @@ class Account(models.Model):
 class Adjustment(models.Model):
     user = models.ForeignKey(User)
     account = models.ForeignKey(Account)
-    uuid = models.CharField(max_length=32, db_indexed=True)
+    uuid = models.CharField(max_length=32, db_index=True)
     description = models.CharField(max_length=255)
     accounting_code = models.CharField(max_length=20, null=True, blank=True)
     origin = models.CharField(max_length=20)
@@ -87,7 +87,7 @@ class Adjustment(models.Model):
     invoice = models.ForeignKey('Invoice', null=True, blank=True)
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, user, account, description, unit_amount, quantity, currency, accounting_code=None):
@@ -168,7 +168,7 @@ class BillingInfo(models.Model):
     paypal_billing_agreement_id = models.CharField(max_length=20, null=True, blank=True)
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, account, first_name, last_name, company, address1, address2, city, state, zipcode, country, phone, vat_number, ip_address, ip_address_country, number, verification_value, month, year):
@@ -294,7 +294,7 @@ class CouponRedemption(models.Model):
     created_at = models.DateTimeField()
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, coupon, account, currency):
@@ -322,7 +322,7 @@ class CouponRedemption(models.Model):
 class Invoice(models.Model):
     account = models.ForeignKey(Account)
     user = models.ForeignKey(User)
-    uuid = models.CharField(max_length=32, db_indexed=True)
+    uuid = models.CharField(max_length=32, db_index=True)
     state = models.CharField(max_length=20)
     invoice_number = models.IntegerField()
     po_number = models.CharField(max_length=20, null=True, blank=True)
@@ -334,7 +334,7 @@ class Invoice(models.Model):
     created_at = models.DateTimeField()
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, account):
@@ -387,7 +387,7 @@ class Invoice(models.Model):
             
 PLAN_UNIT_CHOICES = (('days', 'Days'), ('months', 'Months'))
 class Plan(models.Model):
-    plan_code = models.CharField(max_length=50, db_indexed=True)
+    plan_code = models.CharField(max_length=50, db_index=True)
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     success_url = models.URLField(max_length=255, null=True, blank=True)
@@ -503,7 +503,7 @@ class Subscription(models.Model):
     account = models.ForeignKey(Account)
     user = models.ForeignKey(User)
     plan = models.ForeignKey(Plan)
-    uuid = models.CharField(max_length=32, db_indexed=True)
+    uuid = models.CharField(max_length=32, db_index=True)
     state = models.CharField(max_length=20)
     unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
     currency = models.CharField(max_length=3)
@@ -518,7 +518,7 @@ class Subscription(models.Model):
     subscription_add_ons = models.ManyToManyField(PlanAddOn, null=True, blank=True)
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, plan, account, subscription_add_ons, coupon_code, unit_amount, currency, quantity, trial_ends_at, starts_at, total_billing_cycles, first_renewal_date):
@@ -618,7 +618,7 @@ class Transaction(models.Model):
     billing_info_last_four = models.CharField(max_length=4)
     
     class Meta:
-        ordering = ('-pk')
+        ordering = ('-pk',)
     
     @classmethod
     def create(cls, account, amount, currency, description):
