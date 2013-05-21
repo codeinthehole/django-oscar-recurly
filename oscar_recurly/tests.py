@@ -112,4 +112,16 @@ class TestCase(TestCase):
         self.assertTrue(found_addon)
         
         self.subscription = Subscription.create(self.plan, self.account)
+        self.assertTrue(self.subscription.uuid == self.subscription.recurly_subscription.uuid)
+        
+        
+        
+        
+        
+        # clean up recurly stuff when finished.
+        self.subscription.recurly_subscription.terminate(refund='none')
+        self.account.recurly_account.delete()
+        self.plan.recurly_plan.delete()
+        dollar_off_coupon.recurly_coupon.delete()
+        percent_off_coupon.recurly_coupon.delete()
         

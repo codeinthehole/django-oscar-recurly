@@ -620,6 +620,10 @@ class Subscription(models.Model):
         )
         subscription.save()
         return subscription
+    
+    @property
+    def recurly_subscription(self):
+        return recurly.Subscription.get(self.uuid)
 
 TRANSACTION_ACTION_CHOICES = (
     ('purchase', 'Purchase'), 
