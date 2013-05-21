@@ -32,7 +32,7 @@ if not settings.configured:
                 'django.contrib.contenttypes',
                 'django.contrib.sessions',
                 'django.contrib.sites',
-                'recurly',
+                'oscar_recurly',
                 ],
             DEBUG=False,
             SITE_ID=1,
@@ -54,7 +54,7 @@ def run_tests(*test_args):
     # Run tests
     test_runner = NoseTestSuiteRunner(verbosity=1)
 
-    c = coverage(source=['recurly'], omit=['*migrations*', '*tests*'])
+    c = coverage(source=['oscar_recurly'], omit=['*migrations*', '*tests*'])
     c.start()
     num_failures = test_runner.run_tests(test_args)
     c.stop()
@@ -68,7 +68,7 @@ def run_tests(*test_args):
 def generate_migration():
     from south.management.commands.schemamigration import Command
     com = Command()
-    com.handle(app='recurly', initial=True)
+    com.handle(app='oscar_recurly', initial=True)
 
 
 if __name__ == '__main__':

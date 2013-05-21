@@ -28,7 +28,7 @@ class Account(models.Model):
         ordering = ('-pk',)
     
     @classmethod
-    def create(cls, user, email, first_name, last_name, company_name=None, accept_language=None, billing_info=None):
+    def create(cls, user, email, first_name, last_name, company_name, accept_language):
         recurly_account = recurly.Account(
             account_code=user.username,
             username=user.username,
@@ -36,8 +36,7 @@ class Account(models.Model):
             first_name=user.first_name,
             last_name=user.last_name,
             company_name=company_name,
-            accept_language=accept_language,
-            billing_info=billing_info
+            accept_language=accept_language
         )
         recurly_account.save()
         
@@ -50,7 +49,6 @@ class Account(models.Model):
             last_name=last_name, 
             company_name=company_name, 
             accept_language=accept_language, 
-            billing_info=billing_info, 
             created_at=datetime.datetime.now()
         )
         account.save()
@@ -101,7 +99,7 @@ class Adjustment(models.Model):
         )
         recurly_account.charge(recurly_adjustment)
         
-        adjustment = self._create_local(
+        adjustment = cls._create_local(
             user=user, 
             account=account, 
             uuid=recurly_adjustment.uuid, 
@@ -159,7 +157,7 @@ class BillingInfo(models.Model):
     phone = models.CharField(max_length=15)
     vat_number = models.CharField(max_length=20, null=True, blank=True)
     ip_address = models.CharField(max_length=20)
-    ip_address_country = models.CharField(max_length=2)
+    ip_address_country = models.CharField(max_length=2, null=True, blank=True)
     card_type = models.CharField(max_length=10)
     year = models.IntegerField()
     month = models.IntegerField()
@@ -171,9 +169,13 @@ class BillingInfo(models.Model):
         ordering = ('-pk',)
     
     @classmethod
-    def create(cls, account, first_name, last_name, company, address1, address2, city, state, zipcode, country, phone, vat_number, ip_address, ip_address_country, number, verification_value, month, year):
+    def create(cls, account, first_name, last_name, company, address1, address2, city, state, zipcode, country, phone, vat_number, ip_address, number, verification_value, month, year):
         recurly_account = account.recurly_account
-        recurly_billing_info = recurly_account.billing_info
+        try:
+            recurly_billing_info = recurly_account.billing_info
+        except:
+            recurly_billing_info = recurly.BillingInfo()
+        
         recurly_billing_info.first_name = first_name
         recurly_billing_info.last_name = last_name
         recurly_billing_info.company = company
@@ -186,12 +188,16 @@ class BillingInfo(models.Model):
         recurly_billing_info.phone = phone
         recurly_billing_info.vat_number = vat_number
         recurly_billing_info.ip_address = ip_address
-        recurly_billing_info.ip_address_country = ip_address_country
+        recurly_billing_info.type = 'credit_card'
         recurly_billing_info.number = number
         recurly_billing_info.verification_value = verification_value
         recurly_billing_info.month = month
         recurly_billing_info.year = year
-        recurly_billing_info.save()
+        
+        try:
+            recurly_billing_info.save()
+        except:
+            recurly_account.update_billing_info(recurly_billing_info)
         
         billing_info = cls(
             user = account.user,
@@ -208,7 +214,7 @@ class BillingInfo(models.Model):
             phone = phone,
             vat_number = vat_number,
             ip_address = ip_address,
-            ip_address_country = ip_address_country,
+            ip_address_country = recurly_billing_info.ip_address_country,
             card_type = recurly_billing_info.card_type,
             year = year,
             month = month,
@@ -217,6 +223,10 @@ class BillingInfo(models.Model):
         )
         billing_info.save()
         return billing_info
+    
+    @property
+    def recurly_billing_info(self):
+        return self.account.recurly_account.billing_info
 
 class Coupon(models.Model):
     coupon_code = models.CharField(max_length=50, db_index=True)
@@ -239,25 +249,33 @@ class Coupon(models.Model):
         ordering = ('coupon_code',)
     
     @classmethod
-    def create(cls, coupon_code, name, hosted_description, invoice_description, redeem_by_date, single_use, applies_for_months, max_redemptions, applies_to_all_plans, discount_type, discount_percent, discount_dollars, plan_codes=[]):
+    def create(cls, coupon_code, name, discount_type='dollars', discount_percent=0, discount_dollars=0, hosted_description='', invoice_description='', redeem_by_date=None, single_use=False, applies_for_months=None, max_redemptions=None, applies_to_all_plans=False, plan_codes=[]):
         recurly_coupon = recurly.Coupon(
             coupon_code=coupon_code,
             name=name,
             hosted_description=hosted_description,
             invoice_description=invoice_description,
-            redeem_by_date=redeem_by_date,
             single_use=single_use,
-            applies_for_month=applies_for_months,
-            max_redemptions=max_redemptions,
-            applies_to_all_plans=applies_to_all_plans,
             discount_type=discount_type,
-            plan_codes=plan_codes
+            applies_to_all_plans=applies_to_all_plans,
         )
+        
+        if redeem_by_date is not None:
+            recurly_coupon.redeem_by_date = redeem_by_date
+        
+        if applies_for_months is not None:
+            recurly_coupon.applies_for_months = applies_for_months
+            
+        if max_redemptions is not None:
+            recurly_coupon.max_redemptions = max_redemptions
+            
+        if plan_codes != []:
+            recurly_coupon.plan_codes = plan_codes
         
         if discount_type == 'percent':
             recurly_coupon.discount_percent=discount_percent
         elif discount_type == 'dollars':
-            recurly_coupon.discount_in_cents=int(discount_dollars*100)
+            recurly_coupon.discount_in_cents=recurly.resource.Money(int(discount_dollars*100))
             
         recurly_coupon.save()
         
@@ -273,10 +291,11 @@ class Coupon(models.Model):
             applies_for_months = applies_for_months,
             max_redemptions = max_redemptions,
             applies_to_all_plans = applies_to_all_plans,
-            created_at = recurly_coupon.created_at,
-            plans = Plan.objects.filter(plan_code__in=plan_codes)
+            created_at = recurly_coupon.created_at
         )
         coupon.save()
+        
+        # TODO: attach related plans
         return coupon
     
     @property
@@ -304,17 +323,17 @@ class CouponRedemption(models.Model):
             account_code = account.account_code,
             currency = currency
         )
-        recurly_coupon_redemption.save()
+        recurly_redemption = coupon.recurly_coupon.redeem(recurly_coupon_redemption)
         
         coupon_redemption = cls(
             coupon = coupon,
             account = account,
             user = account.user,
-            single_use = recurly_coupon_redemption.single_use,
-            total_discounted = recurly_coupon_redemption.total_discounted_in_cents / 100.0,
+            single_use = recurly_redemption.single_use,
+            total_discounted = recurly_redemption.total_discounted_in_cents / 100.0,
             currency = currency,
-            state = recurly_coupon_redemption.state,
-            created_at = recurly_coupon_redemption.created_at
+            state = recurly_redemption.state,
+            created_at = recurly_redemption.created_at
         )
         coupon_redemption.save()
         return coupon_redemption
@@ -363,7 +382,7 @@ class Invoice(models.Model):
             except DoesNotExist as dne:
                 adjustment = Adjustment._create_local(account.user, account, line_item.uuid, line_item.description, line_item.accounting_code, line_item.origin, line_item.unit_amount_in_cents / 100.0, line_item.quantity, line_item.discount_in_cents / 100.0, line_item.tax_in_cents / 100.0 , line_item.total_in_cents / 100.0, line_item.currency, line_item.taxable, line_item.start_date, line_item.end_date, line_item.created_at)
             
-            adjustment.invoice = self
+            adjustment.invoice = invoice
             adjustment.save()
         
         for recurly_transaction in recurly_invoice.transactions:
@@ -384,6 +403,10 @@ class Invoice(models.Model):
             transaction.save()
             
         return invoice
+    
+    @property
+    def recurly_invoice(self):
+        return recurly.Invoice.get(self.invoice_number)
             
 PLAN_UNIT_CHOICES = (('days', 'Days'), ('months', 'Months'))
 class Plan(models.Model):
@@ -406,29 +429,47 @@ class Plan(models.Model):
     created_at = models.DateTimeField()
     unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
     setup_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    total_billing_cycles = models.IntegerField(null=True, blank=True)
     
     class Meta:
         ordering = ('plan_code',)
     
     @classmethod
-    def create(cls, plan_code, name, description, accounting_code, plan_interval_unit, plan_interval_length, trial_interval_unit, trial_interval_length, setup_fee, unit_amount, total_billing_cycles, unit_name, display_quantity, success_url, cancel_url):
+    def create(cls, plan_code, name, description, unit_amount, accounting_code=None, plan_interval_unit='months', plan_interval_length=1, trial_interval_unit='months', trial_interval_length=0, setup_fee=0, total_billing_cycles=None, unit_name='users', display_quantity=False, success_url=None, cancel_url=None):
         recurly_plan = recurly.Plan(
             plan_code = plan_code,
             name = name,
             description = description,
-            accounting_code = accounting_code,
             plan_interval_unit = plan_interval_unit,
             plan_interval_length = plan_interval_length,
-            trial_interval_unit = trial_interval_unit,
-            trial_interval_length = trial_interval_length,
-            setup_fee_in_cents = recurly.resource.Money(int(setup_fee * 100)),
             unit_amount_in_cents = recurly.resource.Money(int(unit_amount * 100)),
-            total_billing_cycles = total_billing_cycles,
-            unit_name = unit_name,
             display_quantity = display_quantity,
-            success_url = success_url,
-            cancel_url = cancel_url
         )
+        
+        if accounting_code:
+            recurly_plan.accounting_code = accounting_code
+        
+        if trial_interval_unit:
+            recurly_plan.trial_interval_unit = trial_interval_unit
+        
+        if trial_interval_length:
+            recurly_plan.trial_interval_length = trial_interval_length
+        
+        if setup_fee:
+            recurly_plan.setup_fee_in_cents = recurly.resource.Money(int(setup_fee * 100))
+        
+        if total_billing_cycles:
+            recurly_plan.total_billing_cycles = total_billing_cycles
+            
+        if unit_name:
+            recurly_plan.unit_name = unit_name
+        
+        if success_url:
+            recurly_plan.success_url = success_url
+            
+        if cancel_url:
+            recurly_plan.cancel_url = cancel_url
+
         recurly_plan.save()
         
         plan = cls(
@@ -440,8 +481,8 @@ class Plan(models.Model):
             plan_interval_length = plan_interval_length,
             trial_interval_unit = trial_interval_unit,
             trial_interval_length = trial_interval_length,
-            setup_fee_in_cents = setup_fee,
-            unit_amount_in_cents = unit_amount,
+            setup_fee = setup_fee,
+            unit_amount = unit_amount,
             total_billing_cycles = total_billing_cycles,
             unit_name = unit_name,
             display_quantity = display_quantity,
@@ -451,7 +492,7 @@ class Plan(models.Model):
             display_phone_number = recurly_plan.display_phone_number,
             bypass_hosted_confirmation = recurly_plan.bypass_hosted_confirmation,
             payment_page_tos_link = recurly_plan.payment_page_tos_link,
-            created_at = recurly_plan.payment_page_tos_link
+            created_at = recurly_plan.created_at
         )
         plan.save()
         return plan
@@ -467,13 +508,14 @@ class PlanAddOn(models.Model):
     display_quantity_on_hosted_page = models.BooleanField(default=True)
     default_quantity = models.IntegerField(default=1)
     unit_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    accounting_code = models.CharField(max_length=20, null=True, blank=True)
     created_at = models.DateTimeField()
     
     class Meta:
         ordering = ('plan', 'add_on_code',)
     
     @classmethod
-    def create(cls, plan, add_on_code, name, unit_amount, default_quantity, display_quantity_on_hosted_page, accounting_code):
+    def create(cls, plan, add_on_code, name, unit_amount, default_quantity=1, display_quantity_on_hosted_page=True, accounting_code=''):
         recurly_plan = plan.recurly_plan
         recurly_plan_add_on = recurly.AddOn(
             add_on_code = add_on_code,
@@ -510,7 +552,7 @@ class Subscription(models.Model):
     quantity = models.IntegerField(default=1)
     activated_at = models.DateTimeField()
     canceled_at = models.DateTimeField(null=True, blank=True)
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(null=True, blank=True)
     current_period_started_at = models.DateTimeField()
     current_period_ends_at = models.DateTimeField()
     trial_started_at = models.DateTimeField(null=True, blank=True)
@@ -521,24 +563,42 @@ class Subscription(models.Model):
         ordering = ('-pk',)
     
     @classmethod
-    def create(cls, plan, account, subscription_add_ons, coupon_code, unit_amount, currency, quantity, trial_ends_at, starts_at, total_billing_cycles, first_renewal_date):
+    def create(cls, plan, account, subscription_add_ons=None, coupon_code=None, unit_amount=None, currency='USD', quantity=1, trial_ends_at=None, starts_at=None, total_billing_cycles=None, first_renewal_date=None):
         recurly_account = account.recurly_account
         recurly_subscription = recurly.Subscription(
             plan_code = plan.plan_code,
             account = recurly_account,
-            coupon_code = coupon_code,
-            unit_amount_in_cents = recurly.resource.Money(int(unit_amount * 100)),
-            currency = currency,
-            quantity = quantity,
-            trial_ends_at = trial_ends_at,
-            starts_at = starts_at,
-            total_billing_cycles = total_billing_cycles,
-            first_renewal_date = first_renewal_date
+            currency = currency
         )
         
-        if subscription_add_ons:
+        if coupon_code is not None:
+            recurly_subscription.coupon_code = coupon_code
+        
+        if unit_amount is None:
+            unit_amount = plan.unit_amount # use plan's unit amount as default if none is provided.
+            recurly_subscription.unit_amount_in_cents = int(plan.unit_amount * 100)
+        else:
+            recurly_subscription.unit_amount_in_cents = int(unit_amount * 100)
+        
+        if quantity is not None:
+            recurly_subscription.quantity = quantity
+        
+        if trial_ends_at is not None:
+            recurly_subscription.trial_ends_at = trial_ends_at
+        
+        if starts_at is not None:
+            recurly_subscription.starts_at = starts_at
+        
+        if total_billing_cycles is not None:
+            recurly_subscription.total_billing_cycles = total_billing_cycles
+        
+        if first_renewal_date is not None:
+            recurly_subscription.first_renewal_date = first_renewal_date
+        
+        if subscription_add_ons is not None:
             #TODO Add-ons
             pass
+        
         recurly_subscription.save()
         
         subscription = cls(
