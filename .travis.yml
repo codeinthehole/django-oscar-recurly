@@ -3,5 +3,8 @@ python:
   - "2.7"
 # command to install dependencies
 install: "pip install -r requirements.txt --use-mirrors"
+env:
+  - DJANGO_SETTINGS_MODULE=
 # command to run tests
-script: nosetests
+script: 
+  - ./run_tests.py
