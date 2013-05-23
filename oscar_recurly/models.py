@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
-from xml.dom.minidom import parseString
-import datetime, re, recurly
+from django.utils import timezone
+import recurly
 
 recurly.SUBDOMAIN = settings.RECURLY_SUBDOMAIN
 recurly.API_KEY = settings.RECURLY_API_KEY
@@ -49,7 +49,7 @@ class Account(models.Model):
             last_name=last_name, 
             company_name=company_name, 
             accept_language=accept_language, 
-            created_at=datetime.datetime.now()
+            created_at=recurly_account.created_at
         )
         account.save()
         return account
