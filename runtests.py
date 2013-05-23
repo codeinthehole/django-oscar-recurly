@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys
+import os, sys
 from coverage import coverage
 from optparse import OptionParser
 
@@ -11,9 +11,9 @@ if not settings.configured:
         from integration import *
     except ImportError:
         recurly_settings.update({
-            'RECURLY_SUBDOMAIN': '',
-            'RECURLY_API_KEY': '',
-            'RECURLY_PRIVATE_KEY': '',
+            'RECURLY_SUBDOMAIN': os.environ.get('RECURLY_SUBDOMAIN'),
+            'RECURLY_API_KEY': os.environ.get('RECURLY_API_KEY'),
+            'RECURLY_PRIVATE_KEY': os.environ.get('RECURLY_PRIVATE_KEY'),
             'RECURLY_DEFAULT_CURRENCY': 'USD',
         })
     else:
@@ -49,7 +49,7 @@ def run_tests(*test_args):
         patch_for_test_db_setup()
 
     if not test_args:
-        test_args = ['tests']
+        test_args = ['oscar_recurly.tests']
 
     # Run tests
     test_runner = NoseTestSuiteRunner(verbosity=1)
