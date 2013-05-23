@@ -4,9 +4,10 @@ python:
 # command to install dependencies
 install: "pip install -r requirements.txt --use-mirrors"
 env:
-  - secure: "dl9RXxzKAE26ePVllIQ7Y786moie5qjyg1ZYuyD38vW6BZZ3f2oh2KAWR2zR\nGoIA56RenkVCgaDkZ+GP9W2ry/dI/kkZACG3qW2S8exPVYGiXYkYROYLmFDH\nMGprozaOHQR1PqBaexhCvfORnz0JKBvj2pgBbr8GrMbnXvD6/jo="
-  - secure: "ItL7FNGIaniPJvMh5URr0UXh+AyEN1UfUl7mw+5GlTpxbguCxEC7xk77tdks\nbEO+uJZp1xsZcJnk6KIhI+gmBPHKcLjElxi/Hof8ew1ATC+BmRydooDJ+1xI\nnJZAf2+fDJop354k9U7hHyHueP9VC/d8iy6BCKMhIsk1IPc8XMc="
-  - secure: "D/ctgVmAQqJRp4hb35bp9V2R+ZoOGVtbN8w9ZPNqNIGHKrRzM0WfvxlIup0L\n0RvMn/EVRgyaA+7IKwWZe4SFfOh/m2ffPwmipYiTVj21trgkwfMHE6lIvOFv\nHSgUqzgzB3WEzafuDgNK98f+/h8Tg28op304OsRhyuEZxaiPypg="
+  global:
+    - secure: "dl9RXxzKAE26ePVllIQ7Y786moie5qjyg1ZYuyD38vW6BZZ3f2oh2KAWR2zR\nGoIA56RenkVCgaDkZ+GP9W2ry/dI/kkZACG3qW2S8exPVYGiXYkYROYLmFDH\nMGprozaOHQR1PqBaexhCvfORnz0JKBvj2pgBbr8GrMbnXvD6/jo="
+    - secure: "ItL7FNGIaniPJvMh5URr0UXh+AyEN1UfUl7mw+5GlTpxbguCxEC7xk77tdks\nbEO+uJZp1xsZcJnk6KIhI+gmBPHKcLjElxi/Hof8ew1ATC+BmRydooDJ+1xI\nnJZAf2+fDJop354k9U7hHyHueP9VC/d8iy6BCKMhIsk1IPc8XMc="
+    - secure: "D/ctgVmAQqJRp4hb35bp9V2R+ZoOGVtbN8w9ZPNqNIGHKrRzM0WfvxlIup0L\n0RvMn/EVRgyaA+7IKwWZe4SFfOh/m2ffPwmipYiTVj21trgkwfMHE6lIvOFv\nHSgUqzgzB3WEzafuDgNK98f+/h8Tg28op304OsRhyuEZxaiPypg="
 # command to run tests
 script: 
   - ./runtests.py
