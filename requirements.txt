@@ -1,6 +1,8 @@
+recurly==2.1.9
+django-oscar==0.3
+
 South==0.7.5
 coverage==3.5.2
-django-oscar==0.3
 mock==1.0b1
 django-nose==1.1
 nose==1.1.2
