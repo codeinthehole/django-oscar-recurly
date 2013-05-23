@@ -8,4 +8,5 @@
 local_settings.py
 .project
 .pydevproject
+htmlcov
 venv
