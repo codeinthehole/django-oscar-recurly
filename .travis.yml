@@ -9,4 +9,4 @@ env:
   - secure: "D/ctgVmAQqJRp4hb35bp9V2R+ZoOGVtbN8w9ZPNqNIGHKrRzM0WfvxlIup0L\n0RvMn/EVRgyaA+7IKwWZe4SFfOh/m2ffPwmipYiTVj21trgkwfMHE6lIvOFv\nHSgUqzgzB3WEzafuDgNK98f+/h8Tg28op304OsRhyuEZxaiPypg="
 # command to run tests
 script: 
-  - ./run_tests.py
+  - ./runtests.py
