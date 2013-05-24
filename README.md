@@ -178,7 +178,7 @@ then install the testing dependencies::
 
 The test suite can then be run using::
 
-    ./run_tests.py
+    ./runtests.py
 
 Magic card numbers are available on the Recurly site:
 https://docs.recurly.com/payment-gateways/test
