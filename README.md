@@ -2,11 +2,11 @@
 Recurly integration for django-oscar
 ====================================
 
-This package provides integration with the payment gateway, Recurly using their API and push notifications. It is designed to work seamlessly with the e-commerce framework `django-oscar`_.
+This package provides integration with the payment gateway, Recurly using their API and push notifications. It is designed to work seamlessly with the e-commerce framework `django-oscar`.
 
-.. _`Recurly API`: https://docs.recurly.com/api
-.. _`Recurly Push Notifications`: https://docs.recurly.com/api/push-notifications
-.. _`django-oscar`: https://github.com/tangentlabs/django-oscar
+* `Recurly API`: https://docs.recurly.com/api
+* `Recurly Push Notifications`: https://docs.recurly.com/api/push-notifications
+* `django-oscar`: https://github.com/tangentlabs/django-oscar
 
 Installation
 ------------
@@ -186,3 +186,5 @@ https://docs.recurly.com/payment-gateways/test
 Sample VISA vard:
 
     4111111111111111
+    
+[![Build Status](https://travis-ci.org/mynameisgabe/django-oscar-recurly.png?branch=master)](https://travis-ci.org/mynameisgabe/django-oscar-recurly)
