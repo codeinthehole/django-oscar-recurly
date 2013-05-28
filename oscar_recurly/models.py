@@ -1,13 +1,20 @@
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.signals import post_save, pre_delete
 from django.db import models
+from django.dispatch.dispatcher import receiver
 from django.utils import timezone
 import recurly
+
 
 recurly.SUBDOMAIN = settings.RECURLY_SUBDOMAIN
 recurly.API_KEY = settings.RECURLY_API_KEY
 recurly.PRIVATE_KEY = settings.RECURLY_PRIVATE_KEY
 recurly.DEFAULT_CURRENCY = settings.RECURLY_DEFAULT_CURRENCY
+
+# If set to True, we will automatically propagate django.auth user changes to recurly.
+RECURLY_AUTO_SYNC = getattr(settings, 'RECURLY_AUTO_SYNC', True)
 
 
 ACCOUNT_STATE_CHOICES = (('active','Active'),('closed','Closed'))
@@ -49,14 +56,13 @@ class Account(models.Model):
             last_name=last_name, 
             company_name=company_name, 
             accept_language=accept_language, 
+            hosted_login_token=recurly_account.hosted_login_token,
             created_at=recurly_account.created_at
         )
         account.save()
         return account
     
-    def charge(self, description, unit_amount, quantity, currency, accounting_code=None):
-        return Adjustment.create(self.user, self, description, unit_amount, quantity, currency, accounting_code)
-    
+    @property
     def hosted_login_url(self):
         return 'https://{subdomain}.recurly.com/account/{hosted_login_token}'.format(subdomain=settings.RECURLY_SUBDOMAIN, hosted_login_token=self.hosted_login_token)
     
@@ -64,6 +70,23 @@ class Account(models.Model):
     def recurly_account(self):
         return recurly.Account.get(self.user.username)
     
+    def charge(self, description, unit_amount, quantity, currency, accounting_code=None):
+        return Adjustment.create(self.user, self, description, unit_amount, quantity, currency, accounting_code)
+    
+    def __unicode__(self):
+        return self.account_code
+        
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            recurly_account = self.recurly_account
+            recurly_account.email = self.email
+            recurly_account.first_name = self.first_name
+            recurly_account.last_name = self.last_name
+            recurly_account.company_name = self.company_name
+            recurly_account.accept_language = self.accept_language
+            recurly_account.save()
+            self.hosted_login_token = recurly_account.hosted_login_token
+        super(Account, self).save(*args, **kwargs)
 
 class Adjustment(models.Model):
     user = models.ForeignKey(User)
@@ -99,7 +122,7 @@ class Adjustment(models.Model):
         )
         recurly_account.charge(recurly_adjustment)
         
-        adjustment = cls._create_local(
+        return cls._create_local(
             user=user, 
             account=account, 
             uuid=recurly_adjustment.uuid, 
@@ -117,7 +140,6 @@ class Adjustment(models.Model):
             end_date=recurly_adjustment.end_date,
             created_at=recurly_adjustment.created_at
         )
-        return adjustment
     
     @classmethod
     def _create_local(cls, user, account, uuid, description, accounting_code, origin, unit_amount, quantity, discount, tax, total, currency, taxable, start_date, end_date, created_at):
@@ -227,6 +249,28 @@ class BillingInfo(models.Model):
     @property
     def recurly_billing_info(self):
         return self.account.recurly_account.billing_info
+    
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            recurly_billing_info.first_name = self.first_name
+            recurly_billing_info.last_name = self.last_name
+            recurly_billing_info.company = self.company
+            recurly_billing_info.address1 = self.address1
+            recurly_billing_info.address2 = self.address2
+            recurly_billing_info.city = self.city
+            recurly_billing_info.state = self.state
+            recurly_billing_info.zip = self.zipcode
+            recurly_billing_info.country = self.country
+            recurly_billing_info.phone = self.phone
+            recurly_billing_info.vat_number = self.vat_number
+            recurly_billing_info.ip_address = self.ip_address
+            recurly_billing_info.type = 'credit_card'
+            recurly_billing_info.number = self.number
+            recurly_billing_info.verification_value = self.verification_value
+            recurly_billing_info.month = self.month
+            recurly_billing_info.year = self.year
+            recurly_billing_info.save()
+        super(BillingInfo, self).save(*args, **kwargs)
 
 class Coupon(models.Model):
     coupon_code = models.CharField(max_length=50, db_index=True)
@@ -301,6 +345,7 @@ class Coupon(models.Model):
     @property
     def recurly_coupon(self):
         return recurly.Coupon.get(self.coupon_code)
+            
 
 class CouponRedemption(models.Model):
     coupon = models.ForeignKey(Coupon)
@@ -360,9 +405,8 @@ class Invoice(models.Model):
         recurly_account = account.recurly_account
         recurly_invoice = recurly_account.invoice()
         
-        invoice = cls(
+        invoice = cls._create_local(
             account = account,
-            user = account.user,
             uuid = recurly_invoice.uuid,
             state = recurly_invoice.state,
             invoice_number = recurly_invoice.invoice_number,
@@ -374,12 +418,11 @@ class Invoice(models.Model):
             currency = recurly_invoice.currency,
             created_at = recurly_invoice.created_at
         )
-        invoice.save()
-         
+        
         for line_item in recurly_invoice.line_items:
             try:
                 adjustment = account.adjustment_set.get(uuid=line_item.uuid)
-            except DoesNotExist as dne:
+            except DoesNotExist:
                 adjustment = Adjustment._create_local(account.user, account, line_item.uuid, line_item.description, line_item.accounting_code, line_item.origin, line_item.unit_amount_in_cents / 100.0, line_item.quantity, line_item.discount_in_cents / 100.0, line_item.tax_in_cents / 100.0 , line_item.total_in_cents / 100.0, line_item.currency, line_item.taxable, line_item.start_date, line_item.end_date, line_item.created_at)
             
             adjustment.invoice = invoice
@@ -388,7 +431,7 @@ class Invoice(models.Model):
         for recurly_transaction in recurly_invoice.transactions:
             try:
                 transaction = account.transaction_set.get(uuid=recurly_transaction.uuid)
-            except DoesNotExist as dne:
+            except DoesNotExist:
                 transaction = Transaction._create_local(account, account.user, recurly_transaction.invoice, recurly_transaction.subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
                     recurly_transaction.tax_in_cents / 100.0, recurly_transaction.currency, recurly_transaction.status, recurly_transaction.source, recurly_transaction.reference, recurly_transaction.test, 
                     recurly_transaction.voidable, recurly_transaction.refundable, recurly_transaction.cvv_result, recurly_transaction.avs_result, recurly_transaction.avs_result_street, 
@@ -402,6 +445,25 @@ class Invoice(models.Model):
             transaction.invoice = self
             transaction.save()
             
+        return invoice
+        
+    @classmethod
+    def _create_local(cls, account, uuid, state, invoice_number, po_number, vat_number, subtotal, tax, total, currency, created_at):
+        invoice = cls(
+            account = account,
+            user = account.user,
+            uuid = uuid,
+            state = state,
+            invoice_number = invoice_number,
+            po_number = po_number,
+            vat_number = vat_number,
+            subtotal = subtotal,
+            tax = tax,
+            total = total,
+            currency = currency,
+            created_at = created_at
+        )
+        invoice.save()
         return invoice
     
     @property
@@ -500,6 +562,14 @@ class Plan(models.Model):
     @property
     def recurly_plan(self):
         return recurly.Plan.get(self.plan_code)
+    
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            recurly_plan = self.recurly_plan
+            recurly_plan.unit_amount_in_cents = recurly.resource.Money(int(self.unit_amount * 100))
+            recurly_plan.save()
+        super(Plan, self).save(*args, **kwargs)
+            
 
 class PlanAddOn(models.Model):
     plan = models.ForeignKey(Plan)
@@ -539,6 +609,17 @@ class PlanAddOn(models.Model):
         )
         plan_add_on.save()
         return plan_add_on
+    
+    @property
+    def recurly_plan_add_on(self):
+        return self.plan.recurly_plan.get_add_on(self.add_on_code)
+    
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            recurly_plan_add_on = self.recurly_plan_add_on
+            recurly_plan_add_on.unit_amount_in_cents = recurly.resource.Money(int(self.unit_amount * 100))
+            recurly_plan_add_on.save()
+        super(Plan, self).save(*args, **kwargs)
         
 
 class Subscription(models.Model):
@@ -601,7 +682,7 @@ class Subscription(models.Model):
         
         recurly_subscription.save()
         
-        subscription = cls(
+        return cls._create_local(
             account = account,
             user = account.user,
             plan = plan,
@@ -616,6 +697,27 @@ class Subscription(models.Model):
             current_period_started_at = recurly_subscription.current_period_started_at,
             current_period_ends_at = recurly_subscription.current_period_ends_at,
             trial_started_at = recurly_subscription.trial_started_at,
+            trial_ends_at = recurly_subscription.trial_ends_at
+        )
+
+        
+    @classmethod
+    def _create_local(cls, account, user, plan, uuid, state, unit_amount, currency, quantity, activated_at, canceled_at, expires_at, current_period_started_at, current_period_ends_at, trial_started_at, trial_ends_at):
+        subscription = cls(
+            account = account,
+            user = user,
+            plan = plan,
+            uuid = uuid,
+            state = state,
+            unit_amount = unit_amount,
+            currency = currency,
+            quantity = quantity,
+            activated_at = activated_at,
+            canceled_at = canceled_at,
+            expires_at = expires_at,
+            current_period_started_at = current_period_started_at,
+            current_period_ends_at = current_period_ends_at,
+            trial_started_at = trial_started_at,
             trial_ends_at = trial_ends_at
         )
         subscription.save()
@@ -624,6 +726,18 @@ class Subscription(models.Model):
     @property
     def recurly_subscription(self):
         return recurly.Subscription.get(self.uuid)
+    
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            recurly_subscription = self.recurly_subscription
+            recurly_subscription.timeframe = 'now'
+            recurly_subscription.plan_code = self.plan.plan_code
+            recurly_subscription.quantity = self.quantity
+            recurly_subscription.unit_amount_in_cents = int(self.unit_amount * 100)
+            recurly_subscription.save()
+            # todo update addons
+        super(Subscription, self).save(*args, **kwargs)
+        
 
 TRANSACTION_ACTION_CHOICES = (
     ('purchase', 'Purchase'), 
@@ -656,10 +770,10 @@ class Transaction(models.Model):
     test = models.BooleanField()
     voidable = models.BooleanField()
     refundable = models.BooleanField()
-    cvv_result = models.CharField(max_length=50)
-    avs_result = models.CharField(max_length=50)
-    avs_result_street = models.CharField(max_length=50)
-    avs_result_postal = models.CharField(max_length=50)
+    cvv_result = models.CharField(max_length=50, null=True, blank=True)
+    avs_result = models.CharField(max_length=50, null=True, blank=True)
+    avs_result_street = models.CharField(max_length=50, null=True, blank=True)
+    avs_result_postal = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField()
     account_account_code = models.CharField(max_length=50)
     account_first_name = models.CharField(max_length=50)
@@ -695,16 +809,29 @@ class Transaction(models.Model):
         )
         recurly_transaction.save()
         
-        transaction = self._create_local(account, account.user, recurly_transaction.invoice, recurly_transaction.subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
+        try:
+            subscription = Subscription.objects.get(uuid=recurly_transaction.subscription().uuid)
+        except AttributeError:
+            subscription = None
+        except ObjectDoesNotExist:
+            subscription = None
+        
+        try:
+            invoice = Invoice.objects.get(uuid=recurly_transaction.invoice().uuid)
+        except AttributeError:
+            invoice = None
+        except ObjectDoesNotExist:
+            invoice = Invoice._create_local(account, recurly_transaction.invoice().uuid, recurly_transaction.invoice().state, recurly_transaction.invoice().invoice_number, recurly_transaction.invoice().po_number, recurly_transaction.invoice().vat_number, recurly_transaction.invoice().subtotal_in_cents / 100.0, recurly_transaction.invoice().tax_in_cents / 100.0, recurly_transaction.invoice().total_in_cents / 100.0, recurly_transaction.invoice().currency, recurly_transaction.invoice().created_at)
+         
+        return cls._create_local(account, account.user, invoice, subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
             recurly_transaction.tax_in_cents / 100.0, recurly_transaction.currency, recurly_transaction.status, recurly_transaction.source, recurly_transaction.reference, recurly_transaction.test, 
             recurly_transaction.voidable, recurly_transaction.refundable, recurly_transaction.cvv_result, recurly_transaction.avs_result, recurly_transaction.avs_result_street, 
-            recurly_transaction.avs_result_postal, recurly_transaction.created_at, recurly_transaction.account.account_code, recurly_transaction.account.first_name, recurly_transaction.account.last_name, 
-            recurly_transaction.account.company, recurly_transaction.account.billing_info.first_name, recurly_transaction.account.billing_info.last_name, recurly_transaction.account.billing_info.address1, 
-            recurly_transaction.account.billing_info.address2, recurly_transaction.account.billing_info.city, recurly_transaction.account.billing_info.state, recurly_transaction.account.billing_info.zip, 
-            recurly_transaction.account.billing_info.country, recurly_transaction.account.billing_info.phone, recurly_transaction.account.billing_info.vat_number, 
-            recurly_transaction.account.billing_info.card_type, recurly_transaction.account.billing_info.year, recurly_transaction.account.billing_info.month, recurly_transaction.account.billing_info.first_six,
-            recurly_transaction.account.billing_info.last_four)
-        return transaction
+            recurly_transaction.avs_result_postal, recurly_transaction.created_at, recurly_transaction.account().account_code, recurly_transaction.account().first_name, recurly_transaction.account().last_name, 
+            recurly_transaction.account().company_name, recurly_transaction.account().billing_info.first_name, recurly_transaction.account().billing_info.last_name, recurly_transaction.account().billing_info.address1, 
+            recurly_transaction.account().billing_info.address2, recurly_transaction.account().billing_info.city, recurly_transaction.account().billing_info.state, recurly_transaction.account().billing_info.zip, 
+            recurly_transaction.account().billing_info.country, recurly_transaction.account().billing_info.phone, recurly_transaction.account().billing_info.vat_number, 
+            recurly_transaction.account().billing_info.card_type, recurly_transaction.account().billing_info.year, recurly_transaction.account().billing_info.month, recurly_transaction.account().billing_info.first_six,
+            recurly_transaction.account().billing_info.last_four)
         
     @classmethod
     def _create_local(cls, account, user, invoice, subscription, uuid, action, amount, tax, currency, status, source, reference, test, voidable, refundable, cvv_result, avs_result, avs_result_street, avs_result_postal, 
@@ -754,3 +881,34 @@ class Transaction(models.Model):
         )
         transaction.save()
         return transaction
+
+    @property
+    def recurly_transaction(self):
+        return recurly.Transaction.get(self.uuid)
+
+
+# signal receivers to auto-sync with recurly
+@receiver(post_save, sender=User)
+def sync_account(sender, instance, created, **kwargs):
+    if not RECURLY_AUTO_SYNC:
+        return
+    
+    if created:
+        account = Account.create(instance, instance.email, instance.first_name, instance.last_name, '', '')
+    else:
+        try:
+            account = Account.objects.get(user=instance)
+            account.email, account.first_name, account.last_name = instance.email, instance.first_name, instance.last_name
+            account.save()
+        except ObjectDoesNotExist:
+            pass
+        
+
+@receiver(pre_delete, sender=User)
+def delete_account(sender, instance, **kwargs):
+    if not RECURLY_AUTO_SYNC:
+        return
+    
+    account = Account.objects.get(user=instance)
+    account.delete()
+    

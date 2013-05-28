@@ -47,7 +47,8 @@ class TestCase(TestCase):
         self.user.save()
         
         self.account = Account.create(self.user, self.user.email, self.user.first_name, self.user.last_name, '', 'en')
-        self.assertTrue(self.account.recurly_account.state == 'active')        
+        self.assertTrue(self.account.recurly_account.state == 'active')
+        self.assertTrue(self.account.hosted_login_url.find(self.account.hosted_login_token) >= 0)        
 
         unit_amount = decimal.Decimal(random.randrange(10000))/100
         quantity = random.randrange(10)
@@ -114,7 +115,8 @@ class TestCase(TestCase):
         self.subscription = Subscription.create(self.plan, self.account)
         self.assertTrue(self.subscription.uuid == self.subscription.recurly_subscription.uuid)
         
-        
+        transaction = Transaction.create(self.account, decimal.Decimal(random.randrange(10000))/100, 'USD', 'unit test transaction')
+        self.assertTrue(transaction.uuid == transaction.recurly_transaction.uuid)
         
         
         
