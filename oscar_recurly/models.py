@@ -123,7 +123,7 @@ class Adjustment(models.Model):
         recurly_account.charge(recurly_adjustment)
         
         return cls._create_local(
-            user=user, 
+            user=account.user, 
             account=account, 
             uuid=recurly_adjustment.uuid, 
             description=description, 
@@ -142,9 +142,9 @@ class Adjustment(models.Model):
         )
     
     @classmethod
-    def _create_local(cls, user, account, uuid, description, accounting_code, origin, unit_amount, quantity, discount, tax, total, currency, taxable, start_date, end_date, created_at):
+    def _create_local(cls, account, uuid, description, accounting_code, origin, unit_amount, quantity, discount, tax, total, currency, taxable, start_date, end_date, created_at):
         adjustment = cls(
-            user=user, 
+            user=account.user, 
             account=account, 
             uuid=uuid, 
             description=description, 
@@ -423,7 +423,7 @@ class Invoice(models.Model):
             try:
                 adjustment = account.adjustment_set.get(uuid=line_item.uuid)
             except DoesNotExist:
-                adjustment = Adjustment._create_local(account.user, account, line_item.uuid, line_item.description, line_item.accounting_code, line_item.origin, line_item.unit_amount_in_cents / 100.0, line_item.quantity, line_item.discount_in_cents / 100.0, line_item.tax_in_cents / 100.0 , line_item.total_in_cents / 100.0, line_item.currency, line_item.taxable, line_item.start_date, line_item.end_date, line_item.created_at)
+                adjustment = Adjustment._create_local(account, line_item.uuid, line_item.description, line_item.accounting_code, line_item.origin, line_item.unit_amount_in_cents / 100.0, line_item.quantity, line_item.discount_in_cents / 100.0, line_item.tax_in_cents / 100.0 , line_item.total_in_cents / 100.0, line_item.currency, line_item.taxable, line_item.start_date, line_item.end_date, line_item.created_at)
             
             adjustment.invoice = invoice
             adjustment.save()
@@ -432,7 +432,7 @@ class Invoice(models.Model):
             try:
                 transaction = account.transaction_set.get(uuid=recurly_transaction.uuid)
             except DoesNotExist:
-                transaction = Transaction._create_local(account, account.user, recurly_transaction.invoice, recurly_transaction.subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
+                transaction = Transaction._create_local(account, recurly_transaction.invoice, recurly_transaction.subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
                     recurly_transaction.tax_in_cents / 100.0, recurly_transaction.currency, recurly_transaction.status, recurly_transaction.source, recurly_transaction.reference, recurly_transaction.test, 
                     recurly_transaction.voidable, recurly_transaction.refundable, recurly_transaction.cvv_result, recurly_transaction.avs_result, recurly_transaction.avs_result_street, 
                     recurly_transaction.avs_result_postal, recurly_transaction.created_at, recurly_transaction.account.account_code, recurly_transaction.account.first_name, recurly_transaction.account.last_name, 
@@ -684,7 +684,6 @@ class Subscription(models.Model):
         
         return cls._create_local(
             account = account,
-            user = account.user,
             plan = plan,
             uuid = recurly_subscription.uuid,
             state = recurly_subscription.state,
@@ -702,10 +701,10 @@ class Subscription(models.Model):
 
         
     @classmethod
-    def _create_local(cls, account, user, plan, uuid, state, unit_amount, currency, quantity, activated_at, canceled_at, expires_at, current_period_started_at, current_period_ends_at, trial_started_at, trial_ends_at):
+    def _create_local(cls, account, plan, uuid, state, unit_amount, currency, quantity, activated_at, canceled_at, expires_at, current_period_started_at, current_period_ends_at, trial_started_at, trial_ends_at):
         subscription = cls(
             account = account,
-            user = user,
+            user = account.user,
             plan = plan,
             uuid = uuid,
             state = state,
@@ -823,7 +822,7 @@ class Transaction(models.Model):
         except ObjectDoesNotExist:
             invoice = Invoice._create_local(account, recurly_transaction.invoice().uuid, recurly_transaction.invoice().state, recurly_transaction.invoice().invoice_number, recurly_transaction.invoice().po_number, recurly_transaction.invoice().vat_number, recurly_transaction.invoice().subtotal_in_cents / 100.0, recurly_transaction.invoice().tax_in_cents / 100.0, recurly_transaction.invoice().total_in_cents / 100.0, recurly_transaction.invoice().currency, recurly_transaction.invoice().created_at)
          
-        return cls._create_local(account, account.user, invoice, subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
+        return cls._create_local(account, invoice, subscription, recurly_transaction.uuid, recurly_transaction.action, recurly_transaction.amount_in_cents / 100.0, 
             recurly_transaction.tax_in_cents / 100.0, recurly_transaction.currency, recurly_transaction.status, recurly_transaction.source, recurly_transaction.reference, recurly_transaction.test, 
             recurly_transaction.voidable, recurly_transaction.refundable, recurly_transaction.cvv_result, recurly_transaction.avs_result, recurly_transaction.avs_result_street, 
             recurly_transaction.avs_result_postal, recurly_transaction.created_at, recurly_transaction.account().account_code, recurly_transaction.account().first_name, recurly_transaction.account().last_name, 
@@ -834,13 +833,13 @@ class Transaction(models.Model):
             recurly_transaction.account().billing_info.last_four)
         
     @classmethod
-    def _create_local(cls, account, user, invoice, subscription, uuid, action, amount, tax, currency, status, source, reference, test, voidable, refundable, cvv_result, avs_result, avs_result_street, avs_result_postal, 
+    def _create_local(cls, account, invoice, subscription, uuid, action, amount, tax, currency, status, source, reference, test, voidable, refundable, cvv_result, avs_result, avs_result_street, avs_result_postal, 
                         created_at, account_account_code, account_first_name, account_last_name, account_company, billing_info_first_name, billing_info_last_name, billing_info_address1, billing_info_address2, 
                         billing_info_city, billing_info_state, billing_info_zip, billing_info_country, billing_info_phone, billing_info_vat_number, billing_info_card_type, billing_info_year, billing_info_month, 
                         billing_info_first_six, billing_info_last_four):
         transaction = cls(
             account = account, 
-            user = user, 
+            user = accout.user, 
             invoice = invoice, 
             subscription = subscription, 
             uuid = uuid, 
