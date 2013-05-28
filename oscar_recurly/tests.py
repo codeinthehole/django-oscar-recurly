@@ -52,7 +52,7 @@ class TestCase(TestCase):
 
         unit_amount = decimal.Decimal(random.randrange(10000))/100
         quantity = random.randrange(10)
-        adjustment = Adjustment.create(self.user, self.account, "Unit test.", unit_amount, quantity, 'USD', accounting_code='unittest')
+        adjustment = Adjustment.create(self.account, "Unit test.", unit_amount, quantity, 'USD', accounting_code='unittest')
         
         found_adjustment = False
         for recurly_adjustment in self.account.recurly_account.adjustments():

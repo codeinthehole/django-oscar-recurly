@@ -71,7 +71,7 @@ class Account(models.Model):
         return recurly.Account.get(self.user.username)
     
     def charge(self, description, unit_amount, quantity, currency, accounting_code=None):
-        return Adjustment.create(self.user, self, description, unit_amount, quantity, currency, accounting_code)
+        return Adjustment.create(self, description, unit_amount, quantity, currency, accounting_code)
     
     def __unicode__(self):
         return self.account_code
@@ -111,7 +111,7 @@ class Adjustment(models.Model):
         ordering = ('-pk',)
     
     @classmethod
-    def create(cls, user, account, description, unit_amount, quantity, currency, accounting_code=None):
+    def create(cls, account, description, unit_amount, quantity, currency, accounting_code=None):
         recurly_account = account.recurly_account
         recurly_adjustment = recurly.Adjustment(
             description=description,
