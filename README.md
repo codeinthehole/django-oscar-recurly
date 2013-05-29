@@ -170,11 +170,7 @@ Contributing
 
 To work on ``django-oscar-recurly``, clone the repo, set up a virtualenv and install in develop mode::
 
-    python setup.py develop
-
-then install the testing dependencies::
-
-    pip install -r requirements.txt
+    make install
 
 The test suite can then be run using::
 
