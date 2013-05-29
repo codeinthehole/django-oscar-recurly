@@ -21,6 +21,9 @@ if not settings.configured:
         for key, value in locals().items():
             if key.startswith('RECURLY'):
                 recurly_settings[key] = value
+
+    from oscar import get_core_apps
+
     settings.configure(
             DATABASES={
                 'default': {
@@ -34,7 +37,7 @@ if not settings.configured:
                 'django.contrib.sessions',
                 'django.contrib.sites',
                 'oscar_recurly',
-                ],
+                ] + get_core_apps(),
             DEBUG=False,
             SITE_ID=1,
             NOSE_ARGS=['-s', '--with-spec'],
@@ -53,7 +56,7 @@ def run_tests(*test_args):
         test_args = ['oscar_recurly.tests']
 
     # Run tests
-    test_runner = NoseTestSuiteRunner(verbosity=1)
+    test_runner = NoseTestSuiteRunner(verbosity=2)
 
     c = coverage(source=['oscar_recurly'], omit=['*migrations*', '*tests*'])
     c.start()
