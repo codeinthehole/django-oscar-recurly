@@ -44,7 +44,9 @@ checkout views.  See `oscar's documentation`_ on how to create a local version o
 .. _`oscar's documentation`: http://django-oscar.readthedocs.org/en/latest/index.html
 
 Override the ``handle_payment`` method (which is blank by default) and add your integration code.  An example
-integration might look like::
+integration might look like:
+
+.. code:: python
 
     # myshop.checkout.views
     from django.conf import settings
@@ -114,7 +116,9 @@ Gateway
 
 The class ``recurly.gateway.Gateway`` provides fine-grained access to the Recurly API, which involve constructing XML requests and decoding XML responses.  All calls return a ``recurly.gateway.Response`` instance which provides dictionary-like access to the attributes of the response.
 
-Example calls::
+Example calls:
+
+.. code:: python
 
     # Authorise a transaction.
     # The funds are not transferred from the cardholder account.
@@ -157,11 +161,8 @@ Settings
 ========
 
 * ``RECURLY_SUBDOMAIN`` - Subdomain for Recurly Account
-
 * ``RECURLY_API_KEY`` - API Key
-
 * ``RECURLY_PRIVATE_KEY`` - Private Key
-
 * ``RECURLY_DEFAULT_CURRENCY`` - Currency to use for transactions
 
 
@@ -183,4 +184,5 @@ Sample VISA vard:
 
     4111111111111111
     
-[![Build Status](https://travis-ci.org/mynameisgabe/django-oscar-recurly.png?branch=master)](https://travis-ci.org/mynameisgabe/django-oscar-recurly)
+.. image:: https://secure.travis-ci.org/mynameisgabe/django-oscar-recurly.png?branch=master
+    :target: http://travis-ci.org/#!/mynameisgabe/django-oscar-recurly
