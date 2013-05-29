@@ -11,10 +11,9 @@ setup(name='django-oscar-recurly',
       keywords="Payment, Recurly",
       license='BSD',
       packages=find_packages(exclude=['sandbox*', 'tests*']),
-      install_requires=['django-oscar>=0.3', 'recurly-client-python>=2.1.9'],
-      dependency_links = [
-        'https://github.com/recurly/recurly-client-python/tarball/master#egg=recurly-client-python-2.1.9',
-      ],
+      install_requires=[
+          'django-oscar>=0.3',
+          'recurly>=2.1.9,<2.2'],
       include_package_data=True,
       # See http://pypi.python.org/pypi?%3Aaction=list_classifiers
       classifiers=['Environment :: Web Environment',
